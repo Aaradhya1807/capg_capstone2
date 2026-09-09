@@ -1,0 +1,17 @@
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Local credentials and editor configuration
+.env
+.env.*
+!.env.example
+.vscode/mcp.json
+
+# Generated reports
+/allure-results/
+/allure-report/
