@@ -4,51 +4,97 @@ on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-
   playwright-tests:
-
+    name: Run Playwright Tests
     runs-on: ubuntu-latest
 
-    timeout-minutes: 60
+    timeout-minutes: 30
 
     steps:
-
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
+          cache: npm
 
+      - name: Display environment details
+        run: |
+          node --version
+          npm --version
+          pwd
+          ls -la
 
-      - name: Install dependencies
+      - name: Validate package files
+        run: |
+          test -f package.json
+          test -f package-lock.json
+          node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('package-lock.json', 'utf8'))"
+
+      - name: Install project dependencies
         run: npm ci
-
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-
       - name: Run Playwright tests
-        run: npx playwright test "search.spec.ts"
+        run: npx playwright test
+        env:
+          CI: true
 
-
-      - name: Upload Playwright Report
+      - name: Generate Allure report
         if: always()
+        run: |
+          if [ -d "allure-results" ] && [ "$(find allure-results -type f | head -n 1)" ]; then
+            npx allure generate allure-results --clean --output allure-report
+          else
+            echo "No Allure results were generated."
+          fi
 
+      - name: Upload Playwright HTML report
+        if: always()
         uses: actions/upload-artifact@v4
-
         with:
           name: playwright-report
-
           path: playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
 
-          retention-days: 30
+      - name: Upload Playwright test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Allure HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          if-no-files-found: warn
+          retention-days: 14
